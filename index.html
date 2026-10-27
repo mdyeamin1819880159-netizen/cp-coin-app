@@ -1,0 +1,68 @@
+
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CP Coin App</title>
+<style>
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #101827;
+  color: white;
+  text-align: center;
+}
+header {
+  background: #18263c;
+  padding: 22px;
+  font-size: 25px;
+  font-weight: bold;
+}
+.card {
+  margin: 35px 20px;
+  padding: 30px 15px;
+  background: #233650;
+  border-radius: 18px;
+}
+.coin {
+  font-size: 65px;
+}
+.balance {
+  font-size: 36px;
+  margin: 15px;
+  color: #ffd54a;
+}
+button {
+  background: #ffca28;
+  color: #172033;
+  border: none;
+  border-radius: 12px;
+  padding: 14px 25px;
+  font-size: 18px;
+  font-weight: bold;
+  margin: 8px;
+}
+p { color: #d2d9e5; }
+</style>
+</head>
+<body>
+<header>🪙 CP COIN</header>
+<div class="card">
+  <div class="coin">🪙</div>
+  <p>তোমার মোট কয়েন</p>
+  <div class="balance" id="balance">100 CP</div>
+  <button onclick="earnCoin()">কয়েন সংগ্রহ</button>
+  <p id="message">CP Coin অ্যাপে স্বাগতম!</p>
+</div>
+<script>
+let coins = 100;
+function earnCoin() {
+  coins += 1;
+  document.getElementById("balance").textContent = coins + " CP";
+  document.getElementById("message").textContent =
+    "তুমি ১টি ডেমো কয়েন পেয়েছ!";
+}
+</script>
+</body>
+</html>
