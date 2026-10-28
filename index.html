@@ -1,21 +1,279 @@
-onAuthStateChanged(auth, (user) => {
-  if (user) {
-    authCard.classList.add("hidden");
-    accountCard.classList.remove("hidden");
-    coinCard.classList.remove("hidden");
-    document.getElementById("userEmail").textContent = user.email || "";
-  } else {
-    authCard.classList.remove("hidden");
-    accountCard.classList.add("hidden");
-    coinCard.classList.add("hidden");
-  }
+
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CP Coin App</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#101827;color:white;font-family:Arial,sans-serif;text-align:center}
+header{padding:20px;background:#18263c;font-size:25px;font-weight:bold}
+.card{background:#233650;margin:16px;padding:20px 14px;border-radius:16px}
+input{display:block;width:100%;max-width:360px;margin:12px auto;padding:13px;border-radius:9px;border:0;font-size:16px}
+button{background:#ffca28;color:#172033;border:0;border-radius:10px;padding:12px 16px;margin:5px;font-size:16px;font-weight:bold;cursor:pointer}
+button:disabled{opacity:.5}
+.secondary{background:#d2d9e5}
+.hidden{display:none!important}
+.balance{font-size:34px;color:#ffd54a;margin:12px}
+.game{background:#18263c;padding:15px;border-radius:12px;margin:14px 0}
+#message,#gameMessage{overflow-wrap:anywhere;color:#ffe082}
+#memoryBoard{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;max-width:340px;margin:15px auto}
+.tile{padding:14px 0;margin:0;font-size:24px;min-width:0}
+#bubbleArea{height:180px;background:#101827;border-radius:12px;position:relative;overflow:hidden;margin:12px 0}
+.bubble{position:absolute;border-radius:50%;width:42px;height:42px;background:#ffca28;color:#172033;padding:0}
+p{color:#d2d9e5}
+</style>
+</head>
+<body>
+<header>🪙 CP COIN</header>
+
+<section class="card" id="authCard">
+<h2 id="formTitle">Login / Registration</h2>
+<form id="authForm">
+<input id="email" type="email" placeholder="ইমেইল" autocomplete="email" required>
+<input id="password" type="password" placeholder="পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)" minlength="6" autocomplete="current-password" required>
+<button id="submitBtn" type="submit">Login</button>
+</form>
+<button id="switchBtn" class="secondary" type="button">নতুন অ্যাকাউন্ট তৈরি</button>
+<button id="resetBtn" class="secondary" type="button">পাসওয়ার্ড ভুলে গেছি</button>
+<p id="message">তোমার আগের অ্যাকাউন্ট দিয়ে Login করো।</p>
+</section>
+
+<section class="card hidden" id="accountCard">
+<h2>তোমার অ্যাকাউন্ট</h2>
+<p id="userEmail"></p>
+<button id="logoutBtn" type="button">Logout</button>
+</section>
+
+<section class="card hidden" id="coinCard">
+<div style="font-size:48px">🪙</div>
+<p>ডেমো ব্যালেন্স</p>
+<div class="balance">100 CP</div>
+<p>এটি পরীক্ষামূলক ব্যালেন্স; সার্ভারে সংরক্ষিত নয়।</p>
+</section>
+
+<section class="card hidden" id="gamesCard">
+<h2>🎮 CP Coin Games</h2>
+<p>গেমের স্কোর শুধু বিনোদনের জন্য। স্কোরে কয়েন যোগ হবে না।</p>
+
+<div class="game">
+<h3>⚡ Tap Challenge</h3>
+<p>১০ সেকেন্ডে যতবার পারো চাপ দাও!</p>
+<h2 id="tapScore">0</h2>
+<p id="tapTime">সময়: ১০ সেকেন্ড</p>
+<button id="tapStart">শুরু করো</button>
+<button id="tapTarget" disabled>ট্যাপ!</button>
+</div>
+
+<div class="game">
+<h3>🧠 Memory Match</h3>
+<p>একই ছবি মেলাও।</p>
+<div id="memoryBoard"></div>
+<button id="memoryReset">আবার খেলো</button>
+<p id="memoryMessage"></p>
+</div>
+
+<div class="game">
+<h3>🫧 Bubble Pop</h3>
+<p>১৫ সেকেন্ডে যতগুলো বুদবুদ পারো ধরো!</p>
+<h2 id="bubbleScore">স্কোর: 0</h2>
+<p id="bubbleTime">সময়: ১৫ সেকেন্ড</p>
+<div id="bubbleArea"></div>
+<button id="bubbleStart">শুরু করো</button>
+</div>
+<p id="gameMessage"></p>
+</section>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
+import {
+ getAuth, createUserWithEmailAndPassword,
+ signInWithEmailAndPassword, signOut,
+ onAuthStateChanged, sendPasswordResetEmail
+} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
+
+const firebaseConfig = {
+ apiKey: "AIzaSyDSRN26iHA9j59bo4JulUOputzev1w-n_I",
+ authDomain: "cp-coin-app.firebaseapp.com",
+ projectId: "cp-coin-app",
+ storageBucket: "cp-coin-app.firebasestorage.app",
+ messagingSenderId: "527784817499",
+ appId: "1:527784817499:web:4ded52ed2f62ab245c207e",
+ measurementId: "G-9NCPJ9SB8S"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const $ = id => document.getElementById(id);
+
+let isRegister = false;
+
+function showMessage(text){ $("message").textContent = text; }
+
+function friendlyError(error){
+ const errors = {
+  "auth/email-already-in-use":"এই ইমেইলে অ্যাকাউন্ট আছে। Login করো।",
+  "auth/invalid-email":"সঠিক ইমেইল লেখো।",
+  "auth/weak-password":"কমপক্ষে ৬ অক্ষরের পাসওয়ার্ড দাও।",
+  "auth/invalid-credential":"ইমেইল বা পাসওয়ার্ড সঠিক নয়।",
+  "auth/network-request-failed":"ইন্টারনেট পরীক্ষা করো।",
+  "auth/too-many-requests":"অনেকবার চেষ্টা হয়েছে। পরে আবার চেষ্টা করো।",
+  "auth/operation-not-allowed":"Firebase-এ Email/Password চালু করতে হবে।",
+  "auth/unauthorized-domain":"Firebase Authentication-এর Authorized domains-এ GitHub Pages ডোমেইন যোগ করো।"
+ };
+ return errors[error.code] || "সমস্যা হয়েছে: " + error.code;
+}
+
+function updateForm(){
+ $("formTitle").textContent = isRegister ? "নতুন অ্যাকাউন্ট তৈরি" : "Login";
+ $("submitBtn").textContent = isRegister ? "Registration" : "Login";
+ $("switchBtn").textContent = isRegister ? "আগের অ্যাকাউন্টে Login" : "নতুন অ্যাকাউন্ট তৈরি";
+ $("password").autocomplete = isRegister ? "new-password" : "current-password";
+ showMessage("");
+}
+
+$("switchBtn").addEventListener("click",()=>{
+ isRegister = !isRegister;
+ updateForm();
 });
 
-document.getElementById("earnBtn").addEventListener("click", () => {
-  coins += 1;
-  document.getElementById("balance").textContent = coins + " CP";
-  document.getElementById("coinMessage").textContent =
-    "এটি শুধু ডেমো  কয়েন।";
+$("authForm").addEventListener("submit",async event=>{
+ event.preventDefault();
+ const email = $("email").value.trim();
+ const password = $("password").value;
+ $("submitBtn").disabled = true;
+ showMessage("অপেক্ষা করো...");
+ try{
+  if(isRegister){
+   await createUserWithEmailAndPassword(auth,email,password);
+  }else{
+   await signInWithEmailAndPassword(auth,email,password);
+  }
+ }catch(error){
+  showMessage(friendlyError(error));
+ }finally{
+  $("submitBtn").disabled = false;
+ }
+});
+
+$("resetBtn").addEventListener("click",async()=>{
+ const email = $("email").value.trim();
+ if(!email){showMessage("আগে ইমেইল লেখো।");return;}
+ try{
+  await sendPasswordResetEmail(auth,email);
+  showMessage("পাসওয়ার্ড রিসেটের ইমেইল পাঠানো হয়েছে।");
+ }catch(error){showMessage(friendlyError(error));}
+});
+
+$("logoutBtn").addEventListener("click",async()=>{
+ try{await signOut(auth);}
+ catch(error){showMessage(friendlyError(error));}
+});
+
+onAuthStateChanged(auth,user=>{
+ $("authCard").classList.toggle("hidden",!!user);
+ $("accountCard").classList.toggle("hidden",!user);
+ $("coinCard").classList.toggle("hidden",!user);
+ $("gamesCard").classList.toggle("hidden",!user);
+ if(user)$("userEmail").textContent=user.email || "";
+});
+
+/* Tap Challenge */
+let tapCount=0,tapLeft=10,tapTimer=null;
+$("tapStart").addEventListener("click",()=>{
+ clearInterval(tapTimer);
+ tapCount=0;tapLeft=10;
+ $("tapScore").textContent=tapCount;
+ $("tapTime").textContent="সময়: "+tapLeft+" সেকেন্ড";
+ $("tapTarget").disabled=false;
+ $("tapStart").disabled=true;
+ tapTimer=setInterval(()=>{
+  tapLeft--;
+  $("tapTime").textContent="সময়: "+tapLeft+" সেকেন্ড";
+  if(tapLeft<=0){
+   clearInterval(tapTimer);tapTimer=null;
+   $("tapTarget").disabled=true;
+   $("tapStart").disabled=false;
+   $("tapTime").textContent="শেষ! তোমার স্কোর: "+tapCount;
+  }
+ },1000);
+});
+$("tapTarget").addEventListener("click",()=>{
+ if(tapTimer){tapCount++;$("tapScore").textContent=tapCount;}
+});
+
+/* Memory Match */
+const emojis=["🍎","🍌","🍇","🍒","🍎","🍌","🍇","🍒"];
+let firstTile=null,lockBoard=false,matches=0;
+function setupMemory(){
+ const board=$("memoryBoard");
+ board.innerHTML="";
+ firstTile=null;lockBoard=false;matches=0;
+ $("memoryMessage").textContent="";
+ const shuffled=[...emojis].sort(()=>Math.random()-.5);
+ shuffled.forEach(emoji=>{
+  const btn=document.createElement("button");
+  btn.className="tile";btn.textContent="❔";btn.dataset.emoji=emoji;
+  btn.addEventListener("click",()=>{
+   if(lockBoard||btn.disabled||btn.textContent!=="❔")return;
+   btn.textContent=emoji;
+   if(!firstTile){firstTile=btn;return;}
+   if(firstTile.dataset.emoji===emoji){
+    firstTile.disabled=true;btn.disabled=true;
+    firstTile=null;matches++;
+    if(matches===4)$("memoryMessage").textContent="অভিনন্দন! সব জোড়া মিলেছে!";
+   }else{
+    lockBoard=true;const previous=firstTile;firstTile=null;
+    setTimeout(()=>{previous.textContent="❔";btn.textContent="❔";lockBoard=false;},700);
+   }
+  });
+  board.appendChild(btn);
+ });
+}
+$("memoryReset").addEventListener("click",setupMemory);
+setupMemory();
+
+/* Bubble Pop */
+let bubbleCount=0,bubbleLeft=15,bubbleTimer=null,bubbleMaker=null;
+function clearBubbles(){
+ clearInterval(bubbleTimer);clearInterval(bubbleMaker);
+ bubbleTimer=null;bubbleMaker=null;
+ $("bubbleArea").innerHTML="";
+ $("bubbleStart").disabled=false;
+}
+function addBubble(){
+ const area=$("bubbleArea");
+ const b=document.createElement("button");
+ b.className="bubble";b.textContent="●";
+ const maxX=Math.max(0,area.clientWidth-42);
+ const maxY=Math.max(0,area.clientHeight-42);
+ b.style.left=Math.floor(Math.random()*maxX)+"px";
+ b.style.top=Math.floor(Math.random()*maxY)+"px";
+ b.addEventListener("click",()=>{
+  if(!bubbleTimer)return;
+  bubbleCount++;
+  $("bubbleScore").textContent="স্কোর: "+bubbleCount;
+  b.remove();
+ });
+ area.appendChild(b);
+ setTimeout(()=>b.remove(),1800);
+}
+$("bubbleStart").addEventListener("click",()=>{
+ clearBubbles();bubbleCount=0;bubbleLeft=15;
+ $("bubbleScore").textContent="স্কোর: 0";
+ $("bubbleTime").textContent="সময়: ১৫ সেকেন্ড";
+ $("bubbleStart").disabled=true;
+ addBubble();
+ bubbleMaker=setInterval(addBubble,550);
+ bubbleTimer=setInterval(()=>{
+  bubbleLeft--;
+  $("bubbleTime").textContent="সময়: "+bubbleLeft+" সেকেন্ড";
+  if(bubbleLeft<=0){
+   clearBubbles();
+   $("bubbleTime").textContent="শেষ! তোমার স্কোর: "+bubbleCount;
+  }
+ },1000);
 });
 </script>
 </body>
