@@ -1,11 +1,13 @@
-
 <!DOCTYPE html>
 <html lang="bn">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CP Coin App</title>
+
 <style>
+* { box-sizing: border-box; }
+
 body {
   margin: 0;
   font-family: Arial, sans-serif;
@@ -13,67 +15,318 @@ body {
   color: white;
   text-align: center;
 }
+
 header {
   background: #18263c;
   padding: 22px;
   font-size: 25px;
   font-weight: bold;
 }
+
 .card {
-  margin: 35px 20px;
-  padding: 30px 15px;
+  margin: 25px 16px;
+  padding: 25px 15px;
   background: #233650;
   border-radius: 18px;
 }
-.coin {
-  font-size: 65px;
+
+input {
+  display: block;
+  width: 100%;
+  max-width: 360px;
+  margin: 12px auto;
+  padding: 14px;
+  border: 1px solid #61748e;
+  border-radius: 10px;
+  font-size: 16px;
 }
-.balance {
-  font-size: 36px;
-  margin: 15px;
-  color: #ffd54a;
-}
+
 button {
   background: #ffca28;
   color: #172033;
   border: none;
   border-radius: 12px;
-  padding: 14px 25px;
-  font-size: 18px;
+  padding: 13px 20px;
+  font-size: 16px;
   font-weight: bold;
-  margin: 8px;
+  margin: 7px 4px;
+  cursor: pointer;
 }
+
+.secondary {
+  background: #d2d9e5;
+}
+
+.coin { font-size: 60px; }
+
+.balance {
+  font-size: 36px;
+  margin: 15px;
+  color: #ffd54a;
+}
+
 p { color: #d2d9e5; }
+
+#message {
+  overflow-wrap: anywhere;
+}
+
+.hidden { display: none; }
 </style>
 </head>
+
 <body>
 <header>🪙 CP COIN</header>
-<div class="card">
-  <div class="coin">🪙</div>
-  <p>তোমার মোট কয়েন</p>
-  <div class="balance" id="balance">100 CP</div>
-  <button onclick="earnCoin()">কয়েন সংগ্রহ</button>
-  <p id="message">CP Coin অ্যাপে স্বাগতম!</p>
+
+<div class="card" id="authCard">
+  <h2 id="formTitle">নতুন অ্যাকাউন্ট তৈরি</h2>
+
+  <form id="authForm">
+    <input
+      type="email"
+      id="email"
+      placeholder="তোমার ইমেইল"
+      autocomplete="email"
+      required
+    >
+
+    <input
+      type="password"
+      id="password"
+      placeholder="পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)"
+      minlength="6"
+      autocomplete="new-password"
+      required
+    >
+
+    <button type="submit" id="submitBtn">
+      Registration
+    </button>
+  </form>
+
+  <button type="button" class="secondary" id="switchBtn">
+    আগে থেকেই অ্যাকাউন্ট আছে? Login
+  </button>
+
+  <button type="button" class="secondary hidden" id="resetBtn">
+    পাসওয়ার্ড ভুলে গেছি
+  </button>
+
+  <p id="message" aria-live="polite">
+    CP Coin-এ স্বাগতম!
+  </p>
 </div>
-<script>
 
-let savedCoins = localStorage.getItem("cpCoins");
-let coins = savedCoins === null ? 100 : Number(savedCoins);
+<div class="card hidden" id="accountCard">
+  <h2>তোমার অ্যাকাউন্ট</h2>
+  <p id="userEmail"></p>
+  <button type="button" id="logoutBtn">Logout</button>
+</div>
 
-function earnCoin() {
-  coins++;
-  localStorage.setItem("cpCoins", String(coins));
+<div class="card hidden" id="coinCard">
+  <div class="coin">🪙</div>
+  <p>তোমার মোট ডেমো কয়েন</p>
+  <div class="balance" id="balance">100 CP</div>
+
+  <button type="button" id="earnBtn">
+    কয়েন সংগ্রহ
+  </button>
+
+  <p id="coinMessage">CP Coin অ্যাপে স্বাগতম!</p>
+</div>
+
+<script type="module">
+import { initializeApp } from
+  "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
+
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  sendPasswordResetEmail
+} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
+
+// তোমার Firebase কনফিগারেশন
+const firebaseConfig = {
+  apiKey: "AIzaSyDSRN26iHA9j59bo4JulUOputzev1w-n_I",
+  authDomain: "cp-coin-app.firebaseapp.com",
+  projectId: "cp-coin-app",
+  storageBucket: "cp-coin-app.firebasestorage.app",
+  messagingSenderId: "527784817499",
+  appId: "1:527784817499:web:4ded52ed2f62ab245c207e",
+  measurementId: "G-9NCPJ9SB8S"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+const authCard = document.getElementById("authCard");
+const accountCard = document.getElementById("accountCard");
+const coinCard = document.getElementById("coinCard");
+const authForm = document.getElementById("authForm");
+const emailInput = document.getElementById("email");
+const passwordInput = document.getElementById("password");
+const formTitle = document.getElementById("formTitle");
+const submitBtn = document.getElementById("submitBtn");
+const switchBtn = document.getElementById("switchBtn");
+const resetBtn = document.getElementById("resetBtn");
+const message = document.getElementById("message");
+
+let isRegister = true;
+let coins = 100;
+
+function showMessage(text) {
+  message.textContent = text;
+}
+
+function friendlyError(error) {
+  const errors = {
+    "auth/email-already-in-use":
+      "এই ইমেইলে অ্যাকাউন্ট আছে। Login করো।",
+    "auth/invalid-email":
+      "সঠিক ইমেইল ঠিকানা লেখো।",
+    "auth/weak-password":
+      "আরও শক্তিশালী পাসওয়ার্ড দাও।",
+    "auth/invalid-credential":
+      "ইমেইল বা পাসওয়ার্ড সঠিক নয়।",
+    "auth/too-many-requests":
+      "অনেকবার চেষ্টা হয়েছে। পরে আবার চেষ্টা করো।",
+    "auth/network-request-failed":
+      "ইন্টারনেট সংযোগ পরীক্ষা করো।",
+    "auth/operation-not-allowed":
+      "Firebase-এ Email/Password চালু আছে কি না দেখো।",
+    "auth/unauthorized-domain":
+      "Firebase Authentication-এর Authorized domains-এ GitHub Pages ডোমেইন যোগ করো।"
+  };
+
+  return errors[error.code] ||
+    "সমস্যা হয়েছে: " + error.code;
+}
+
+function updateForm() {
+  formTitle.textContent = isRegister
+    ? "নতুন অ্যাকাউন্ট তৈরি"
+    : "তোমার অ্যাকাউন্টে Login করো";
+
+  submitBtn.textContent = isRegister
+    ? "Registration"
+    : "Login";
+
+  passwordInput.autocomplete = isRegister
+    ? "new-password"
+    : "current-password";
+
+  switchBtn.textContent = isRegister
+    ? "আগে থেকেই অ্যাকাউন্ট আছে? Login"
+    : "নতুন অ্যাকাউন্ট তৈরি করো";
+
+  resetBtn.classList.toggle("hidden", isRegister);
+  showMessage("");
+}
+
+switchBtn.addEventListener("click", () => {
+  isRegister = !isRegister;
+  updateForm();
+});
+
+authForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const email = emailInput.value.trim();
+  const password = passwordInput.value;
+
+  submitBtn.disabled = true;
+  showMessage("অপেক্ষা করো...");
+
+  try {
+    if (isRegister) {
+      await createUserWithEmailAndPassword(
+        auth, email, password
+      );
+    } else {
+      await signInWithEmailAndPassword(
+        auth, email, password
+      );
+    }
+  } catch (error) {
+    showMessage(friendlyError(error));
+  } finally {
+    submitBtn.disabled = false;
+  }
+});
+
+resetBtn.addEventListener("click", async () => {
+  const email = emailInput.value.trim();
+
+  if (!email) {
+    showMessage("আগে ইমেইল ঠিকানা লেখো।");
+    return;
+  }
+
+  try {
+    await sendPasswordResetEmail(auth, email);
+    showMessage("পাসওয়ার্ড রিসেটের ইমেইল পাঠানো হয়েছে।");
+  } catch (error) {
+    showMessage(friendlyError(error));
+  }
+});
+
+document.getElementById("logoutBtn")
+  .addEventListener("click", async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      document.getElementById("userEmail").textContent =
+        friendlyError(error);
+    }
+  });
+
+function loadCoins(user) {
+  // এই সংস্করণে কয়েন ব্রাউজারেই সেভ হয়।
+  // এটি এখনো Firebase-এ অ্যাকাউন্টভিত্তিক ব্যালান্স নয়।
+  const key = "cpCoins_" + user.uid;
+  const saved = localStorage.getItem(key);
+
+  coins = saved === null ? 100 : Number(saved);
 
   document.getElementById("balance").textContent =
     coins + " CP";
 
-  document.getElementById("message").textContent =
-    "তুমি ১টি ডেমো কয়েন পেয়েছ!";
+  document.getElementById("earnBtn").onclick = () => {
+    coins++;
+    localStorage.setItem(key, String(coins));
+
+    document.getElementById("balance").textContent =
+      coins + " CP";
+
+    document.getElementById("coinMessage").textContent =
+      "তুমি ১টি ডেমো কয়েন পেয়েছ!";
+  };
 }
 
-// অ্যাপ খোলার সময় সেভ করা ব্যালান্স দেখাবে
-document.getElementById("balance").textContent =
-  coins + " CP";
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    authCard.classList.add("hidden");
+    accountCard.classList.remove("hidden");
+    coinCard.classList.remove("hidden");
+
+    document.getElementById("userEmail").textContent =
+      "ইমেইল: " + user.email;
+
+    loadCoins(user);
+  } else {
+    authCard.classList.remove("hidden");
+    accountCard.classList.add("hidden");
+    coinCard.classList.add("hidden");
+
+    emailInput.value = "";
+    passwordInput.value = "";
+    isRegister = true;
+    updateForm();
+  }
+});
 </script>
 </body>
 </html>
