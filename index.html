@@ -57,14 +57,23 @@ p { color: #d2d9e5; }
 </div>
 <script>
 
-let coins = Number(localStorage.getItem("cpCoins")) || 100;
+let savedCoins = localStorage.getItem("cpCoins");
+let coins = savedCoins === null ? 100 : Number(savedCoins);
+
 function earnCoin() {
-  coins ++
-localStorage.setItem("cpCoins", coins);
-  document.getElementById("balance").textContent = coins + " CP";
+  coins++;
+  localStorage.setItem("cpCoins", String(coins));
+
+  document.getElementById("balance").textContent =
+    coins + " CP";
+
   document.getElementById("message").textContent =
     "তুমি ১টি ডেমো কয়েন পেয়েছ!";
 }
+
+// অ্যাপ খোলার সময় সেভ করা ব্যালান্স দেখাবে
+document.getElementById("balance").textContent =
+  coins + " CP";
 </script>
 </body>
 </html>
