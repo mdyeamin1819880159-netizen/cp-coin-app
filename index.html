@@ -56,9 +56,10 @@ p { color: #d2d9e5; }
   <p id="message">CP Coin অ্যাপে স্বাগতম!</p>
 </div>
 <script>
-let coins = 100;
+let coins = Number(localStorage.getItem("cpCoins")) || 100;
 function earnCoin() {
-  coins += 1;
+  coins ++
+localStorage.setItem("cpCoins", coins);
   document.getElementById("balance").textContent = coins + " CP";
   document.getElementById("message").textContent =
     "তুমি ১টি ডেমো কয়েন পেয়েছ!";
