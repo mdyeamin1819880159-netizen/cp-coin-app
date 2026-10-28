@@ -273,5 +273,35 @@ resetBtn.addEventListener("click", async () => {
   }
 });
 
-document.getElementById("logoutBtn")
-  .addEventList
+
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+  try {
+    await signOut(auth);
+    showMessage("Logout হয়েছে।");
+  } catch (error) {
+    showMessage(friendlyError(error));
+  }
+});
+
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    authCard.classList.add("hidden");
+    accountCard.classList.remove("hidden");
+    coinCard.classList.remove("hidden");
+    document.getElementById("userEmail").textContent = user.email || "";
+  } else {
+    authCard.classList.remove("hidden");
+    accountCard.classList.add("hidden");
+    coinCard.classList.add("hidden");
+  }
+});
+
+document.getElementById("earnBtn").addEventListener("click", () => {
+  coins += 1;
+  document.getElementById("balance").textContent = coins + " CP";
+  document.getElementById("coinMessage").textContent =
+    "এটি শুধু ডেমো কয়েন।";
+});
+</script>
+</body>
+</html>
